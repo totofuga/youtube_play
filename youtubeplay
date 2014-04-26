@@ -1,0 +1,37 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+
+use LWP::UserAgent;
+use URI;
+use HTML::TreeBuilder::XPath;
+
+if ( ! @ARGV ) {
+    die "検索文字列を指定してください\n";
+}
+
+my $arg = join " ", @ARGV;
+
+my $youtube_list_uri = URI->new('http://www.youtube.com/results');
+$youtube_list_uri->query_form( { search_query => $arg} );
+
+
+my $ua = LWP::UserAgent->new();
+my $search_res = $ua->get($youtube_list_uri);
+die "not connection youtube search : $youtube_list_uri"  unless $search_res->is_success();
+
+my $youtube_search_tree = HTML::TreeBuilder::XPath->new();
+$youtube_search_tree->parse($search_res->content());
+
+# モジュール名を完全に入力してれば一番最初に出てくるはず
+my $node = $youtube_search_tree->findnodes('//h3[@class="yt-lockup-title"]/a')->[0];
+
+my $youtube_one_url = 'http://www.youtube.com'. $node->attr('href');
+
+print "youtube-dl -o test.mp4 $youtube_one_url\n";
+
+system("youtube-dl -o /tmp/test.mp4 \"$youtube_one_url\"");
+
+system("afplay /tmp/test.mp4");
+
+unlink("/tmp/test.mp4");
